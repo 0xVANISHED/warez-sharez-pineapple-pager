@@ -1,0 +1,115 @@
+#!/bin/sh
+# WarezSharez USB automount hook.
+# Installed to /etc/hotplug.d/block/30-warezsharez ; fired by the kernel on every
+# USB block add/remove. Mounts partitions under the share so they appear in the web UI
+# with no server restart, and unmounts them on removal.
+#
+# Environment provided by hotplug: ACTION (add|remove), DEVNAME (e.g. sda1), DEVTYPE.
+
+WAREZ_ROOT="/mmc/root/warezsharez"
+USB_BASE="${WAREZ_ROOT}/usb"
+TAG="warezsharez"
+
+# Only handle real USB partitions: sda1, sdb2, ... (skip whole disks like "sda").
+case "$DEVNAME" in
+    sd[a-z][0-9]*) : ;;
+    *) exit 0 ;;
+esac
+
+log() { logger -t "$TAG" "$1"; }
+
+sanitize() {
+    # keep it filesystem-friendly: alnum, dash, underscore, dot
+    echo "$1" | tr ' ' '_' | tr -cd 'A-Za-z0-9._-'
+}
+
+mountpoint_for() {
+    # print the current mountpoint of /dev/$1 from /proc/mounts, if any
+    awk -v d="/dev/$1" '$1==d {print $2; exit}' /proc/mounts
+}
+
+do_add() {
+    # Already mounted? nothing to do.
+    if [ -n "$(mountpoint_for "$DEVNAME")" ]; then
+        exit 0
+    fi
+
+    DEV="/dev/$DEVNAME"
+    [ -b "$DEV" ] || exit 0
+
+    RAWLABEL="$(blkid -s LABEL -o value "$DEV" 2>/dev/null)"
+    FSTYPE="$(blkid -s TYPE -o value "$DEV" 2>/dev/null)"
+    PARTLABEL="$(blkid -s PARTLABEL -o value "$DEV" 2>/dev/null)"
+
+    # Skip EFI System Partitions / OS system volumes - we only surface data drives,
+    # not the boot partition of a bootable USB.
+    lbl_lc="$(echo "$RAWLABEL" | tr 'A-Z' 'a-z')"
+    plbl_lc="$(echo "$PARTLABEL" | tr 'A-Z' 'a-z')"
+    case "$lbl_lc" in
+        efi|esp) log "Skipping system partition $DEV (label=$RAWLABEL)"; exit 0 ;;
+    esac
+    case "$plbl_lc" in
+        *"efi system"*|*"microsoft reserved"*) log "Skipping system partition $DEV (partlabel=$PARTLABEL)"; exit 0 ;;
+    esac
+
+    LABEL="$(sanitize "$RAWLABEL")"
+    [ -z "$LABEL" ] && LABEL="$(blkid -s UUID -o value "$DEV" 2>/dev/null | cut -c1-8)"
+    [ -z "$LABEL" ] && LABEL="$DEVNAME"
+
+    MP="${USB_BASE}/${LABEL}"
+    # avoid collisions between two drives sharing a label
+    if mountpoint -q "$MP" 2>/dev/null; then MP="${MP}_${DEVNAME}"; fi
+
+    mkdir -p "$MP"
+
+    # Mount world-writable so the web server (php-fpm runs as 'nobody') can write.
+    case "$FSTYPE" in
+        vfat|exfat)
+            mount -t "$FSTYPE" -o rw,uid=0,gid=0,umask=0000,noatime "$DEV" "$MP" 2>/dev/null \
+                || mount -o rw,noatime "$DEV" "$MP" 2>/dev/null
+            ;;
+        ntfs)
+            # prefer kernel ntfs3, fall back to ntfs-3g
+            mount -t ntfs3 -o rw,uid=0,gid=0,umask=0000,noatime "$DEV" "$MP" 2>/dev/null \
+                || ntfs-3g -o rw,uid=0,gid=0,umask=0000 "$DEV" "$MP" 2>/dev/null \
+                || mount -o rw,noatime "$DEV" "$MP" 2>/dev/null
+            ;;
+        *)
+            # ext4 and friends (real unix perms - chmod the root after mount)
+            mount -o rw,noatime "$DEV" "$MP" 2>/dev/null || mount "$DEV" "$MP" 2>/dev/null
+            ;;
+    esac
+
+    if [ -n "$(mountpoint_for "$DEVNAME")" ]; then
+        chmod 0777 "$MP" 2>/dev/null   # ext4/etc.: make root writable; no-op on vfat
+        log "Mounted $DEV ($FSTYPE) at $MP"
+    else
+        log "Failed to mount $DEV ($FSTYPE)"
+        rmdir "$MP" 2>/dev/null
+    fi
+}
+
+do_remove() {
+    MP="$(mountpoint_for "$DEVNAME")"
+    if [ -n "$MP" ]; then
+        umount "$MP" 2>/dev/null || umount -l "$MP" 2>/dev/null
+        rmdir "$MP" 2>/dev/null
+        log "Unmounted $DEVNAME from $MP"
+    fi
+    # sweep any now-empty stale mountpoints we own
+    if [ -d "$USB_BASE" ]; then
+        for d in "$USB_BASE"/*; do
+            [ -d "$d" ] || continue
+            if ! mountpoint -q "$d" 2>/dev/null; then rmdir "$d" 2>/dev/null; fi
+        done
+    fi
+}
+
+mkdir -p "$USB_BASE"
+
+case "$ACTION" in
+    add)    do_add ;;
+    remove) do_remove ;;
+esac
+
+exit 0

@@ -1,0 +1,93 @@
+<?php
+// WarezSharez file browser. Static shell; the listing is fetched from ./api/ via jQuery/AJAX.
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+$mdns  = strtolower(trim(php_uname('n')));
+$ip    = isset($_SERVER['SERVER_ADDR']) && $_SERVER['SERVER_ADDR'] !== '' ? $_SERVER['SERVER_ADDR'] : '172.16.52.1';
+$bookmark = $mdns !== '' ? $mdns . '.local' : $ip;   // friendly name, IP fallback
+?><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Index of / :: WarezSharez</title>
+  <link rel="stylesheet" href="assets/app.css">
+</head>
+<body class="min-h-screen" style="touch-action:manipulation">
+  <div class="mx-auto max-w-4xl px-0 py-2 sm:p-4">
+
+    <!-- Title bar -->
+    <div class="warez-bevel bg-warez-panel">
+      <div class="bg-warez-bar text-white px-3 py-1 flex items-center justify-between">
+        <span class="font-bold tracking-wide">&#128190; WarezSharez</span>
+        <span class="text-xs">SHARE_UR_WAREZ</span>
+      </div>
+      <div class="px-3 py-2 text-sm">
+        <div class="text-warez-accent font-bold">*** Welcome to the SHARE_UR_WAREZ drop zone ***</div>
+        <div class="text-xs text-warez-line">Upload and download files on the Pager. Plug in a USB stick and it shows up below automatically.</div>
+        <div class="text-xs text-warez-line mt-1">&#128278; Bookmark <span class="text-warez-ink font-bold break-all"><?= htmlspecialchars('http://' . $bookmark . '/') ?></span> to get back after closing this window.</div>
+      </div>
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="warez-bevel bg-warez-panel mt-2 px-3 py-1 text-sm">
+      <span class="text-warez-line">Location:</span>
+      <span id="warez-crumbs"></span>
+      <a href="#" id="warez-refresh" class="text-warez-ink underline ml-2">[refresh]</a>
+    </div>
+
+    <div id="warez-writable" class="warez-bevel bg-yellow-100 mt-2 px-3 py-1 text-xs text-red-800" style="display:none">
+      Uploads only work inside the WarezSharez folder. You can still browse and download here.
+    </div>
+
+    <!-- Listing -->
+    <div class="warez-bevel bg-warez-panel mt-2 overflow-x-auto">
+      <table class="w-full table-fixed text-sm sm:text-base border-collapse">
+        <thead>
+          <tr class="bg-warez-bar text-white text-left">
+            <th class="px-2 py-1 font-normal w-10 sm:w-12">Type</th>
+            <th class="px-2 py-1 font-normal">Name</th>
+            <th class="px-2 py-1 font-normal text-right w-16 sm:w-24">Size</th>
+            <th class="px-2 py-1 font-normal w-40 hidden sm:table-cell">Modified</th>
+            <th class="px-2 py-1 font-normal w-20 sm:w-24 text-right">&nbsp;</th>
+          </tr>
+        </thead>
+        <tbody id="warez-rows"></tbody>
+      </table>
+    </div>
+
+    <!-- Upload box -->
+    <div id="warez-drop" class="warez-bevel bg-warez-panel mt-2 p-3 text-sm transition-colors">
+      <div class="font-bold text-warez-ink mb-1">Upload to this directory</div>
+      <div class="text-xs text-warez-line mb-2"><span class="hidden sm:inline">Drag &amp; drop files here, or </span>tap Upload and pick files &mdash; they send automatically. <span class="warez-blink text-red-700 font-bold">NEW!</span></div>
+      <input type="file" id="warez-file" name="files[]" multiple class="hidden">
+      <div class="text-center">
+        <button type="button" id="warez-upload-btn"
+                class="warez-bevel bg-warez-bg px-8 py-2 text-base font-bold inline-flex items-center gap-2 active:warez-bevel-in">
+          <img src="assets/upload.svg" alt="" class="warez-icon" draggable="false" width="22" height="22">
+          Upload
+        </button>
+      </div>
+      <div id="warez-progress-wrap" class="warez-bevel-in bg-white mt-2 h-4" style="display:none">
+        <div id="warez-progress" class="bg-warez-accent text-white text-xs text-center h-full" style="width:0%">0%</div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="warez-bevel bg-warez-panel mt-2 px-3 py-1 text-xs flex items-center justify-between">
+      <span id="warez-count" class="text-warez-line">0 items</span>
+      <span id="warez-status" class="text-red-700"></span>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center text-xs text-warez-line mt-3 inline-flex items-center justify-center gap-1 w-full">
+      <img src="assets/heart.svg" alt="" class="warez-icon" draggable="false" width="16" height="16">
+      made by <a href="https://0xvanished.com/" class="text-warez-ink underline font-bold">0xVANISHED</a>
+    </div>
+
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

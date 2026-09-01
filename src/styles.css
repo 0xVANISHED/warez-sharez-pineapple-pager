@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Tailwind v4 scans these sources for class names at build time. The authoritative
+   markup lives in the PHP portal (index.php/files.php); the dev harness (index.html)
+   and app JS are auto-scanned from the Vite root. */
+@source "./**/*.js";
+@source "../payloads/user/WarezSharez/warezsharez_install/portal/**/*.php";
+
+/* ------------------------------------------------------------------ *
+ * Retro 2000s "Index of /" theme                                      *
+ * ------------------------------------------------------------------ */
+@theme {
+  --font-mono: "Courier New", "Lucida Console", Monaco, monospace;
+  --color-warez-bg: #d4d0c8;      /* classic win9x/console grey        */
+  --color-warez-panel: #ffffff;
+  --color-warez-ink: #000080;     /* navy hyperlink blue               */
+  --color-warez-accent: #008000;  /* terminal green                    */
+  --color-warez-bar: #000080;
+  --color-warez-line: #808080;
+}
+
+/* Scale the whole UI up via the root font-size (Tailwind sizes are rem-based, so
+   text AND spacing grow together). Bigger on phones, where it reads too small. */
+:root { font-size: 17px; }
+@media (max-width: 640px) { :root { font-size: 18.5px; } }
+
+body {
+  background: var(--color-warez-bg);
+  color: #000;
+  font-family: var(--font-mono);
+}
+
+/* Beveled "3D" borders like old Windows dialogs */
+.warez-bevel {
+  border-top: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+}
+.warez-bevel-in {
+  border-top: 2px solid #404040;
+  border-left: 2px solid #404040;
+  border-right: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+}
+
+/* Blinky "NEW!" marquee accent, used sparingly for flavor */
+@keyframes warez-blink { 50% { opacity: 0; } }
+.warez-blink { animation: warez-blink 1s step-start infinite; }
+
+/* Zebra rows for the listing table */
+.warez-row:nth-child(odd) { background: #f0f0f0; }
+.warez-row:hover { background: #fffbcc; }
+
+/* Pixel-art type icons (folder / file / USB) in the listing */
+.warez-icon {
+  width: 1.35em;
+  height: 1.35em;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Filename left, download icon flush against the Size column. */
+.warez-name-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0.35em;
+}
+.warez-dl {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  text-decoration: none;
+}

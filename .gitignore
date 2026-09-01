@@ -1,0 +1,6 @@
+# Local-dev dummy share (seeded on start; may contain uploads)
+/dev/data/
+.DS_Store
+src/node_modules/
+src/dist/
+src/vendor/
